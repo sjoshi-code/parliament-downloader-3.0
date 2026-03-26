@@ -330,29 +330,18 @@ async def health_check():
 
     for name, path in [("yt-dlp", YTDLP_PATH), ("ffmpeg", FFMPEG_PATH), ("ffprobe", FFPROBE_PATH)]:
         try:
-            result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
+            result = subprocess.run([path, "-version"], capture_output=True, text=True, timeout=10)
+            # ffmpeg/ffprobe print version to stderr and may return non-zero with just -version
+            output = result.stdout.strip() or result.stderr.strip()
+            version_line = output.split("\n")[0][:100] if output else ""
+            is_available = "version" in version_line.lower()
             checks[name] = {
-                "available": result.returncode == 0,
-                "version": result.stdout.strip().split("\n")[0][:100],
-                "stderr": result.stderr.strip()[:200] if result.stderr else "",
-                "returncode": result.returncode,
+                "available": is_available,
+                "version": version_line,
                 "path": path,
             }
         except Exception as e:
             checks[name] = {"available": False, "error": str(e), "path": path}
-
-    # Also check if the file actually exists and is executable
-    import stat
-    for name, path in [("ffmpeg", FFMPEG_PATH), ("ffprobe", FFPROBE_PATH)]:
-        try:
-            p = Path(path)
-            checks[name]["file_exists"] = p.exists()
-            if p.exists():
-                st = p.stat()
-                checks[name]["file_size"] = st.st_size
-                checks[name]["executable"] = bool(st.st_mode & stat.S_IXUSR)
-        except Exception as e:
-            checks[name]["file_check_error"] = str(e)
 
     all_ok = all(c.get("available", False) for c in checks.values())
     return {
