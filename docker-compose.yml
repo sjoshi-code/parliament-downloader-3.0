@@ -1,0 +1,16 @@
+services:
+  parliament-downloader:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DOWNLOAD_DIR=/tmp/parliament
+      - CLEANUP_HOURS=24
+      - MAX_CONCURRENT=3
+      - PORT=8000
+    volumes:
+      - parliament-data:/tmp/parliament
+    restart: unless-stopped
+
+volumes:
+  parliament-data:
